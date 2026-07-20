@@ -56,12 +56,7 @@ export default function MonthView() {
     [currentYear, currentMonth, startSaldo, dias, fixos],
   )
 
-  const yyyymm = `${currentYear}-${String(currentMonth).padStart(2, '0')}`
-  const economiaDoMes = economia[yyyymm] ?? 0
-  const summary = useMemo(
-    () => getMonthSummary(rows, startSaldo, economiaDoMes),
-    [rows, startSaldo, economiaDoMes],
-  )
+  const summary = useMemo(() => getMonthSummary(rows, startSaldo), [rows, startSaldo])
 
   const isCurrentMonth = currentYear === TODAY_YEAR && currentMonth === TODAY_MONTH
 
@@ -143,12 +138,6 @@ export default function MonthView() {
           <div className="card-label">Saída Total</div>
           <div className="card-value">{fmtBRL(summary.saidaTotal)}</div>
         </div>
-        {summary.economia > 0 && (
-          <div className="card">
-            <div className="card-label">Economia</div>
-            <div className="card-value" style={{ color: 'var(--primary)' }}>−{fmtBRL(summary.economia)}</div>
-          </div>
-        )}
         <div className="card">
           <div className="card-label">Performance</div>
           <div className={`card-value ${perfPositive ? 'green' : 'red'}`}>
