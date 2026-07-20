@@ -24,7 +24,8 @@ export interface MonthSummary {
   totalDiario: number
   saidaTotal: number
   performance: number
-  saldoFinal: number
+  economia: number
+  saldoFinal: number  // já descontada a economia
   startSaldo: number
 }
 
@@ -139,19 +140,21 @@ export function getStartSaldoForMonth(
   const prevStart = getStartSaldoForMonth(py, pm, data, todayStr, cache)
   const rows = getMonthRows(py, pm, prevStart, data.dias, data.fixos, todayStr)
   const endSaldo = rows.length > 0 ? rows[rows.length - 1].saldo : prevStart
+  const economiaDoMes = data.economia[yyyymmStr(py, pm)] ?? 0
 
-  cache.set(key, endSaldo)
-  return endSaldo
+  cache.set(key, endSaldo - economiaDoMes)
+  return endSaldo - economiaDoMes
 }
 
-export function getMonthSummary(rows: DaySaldoRow[], startSaldo: number): MonthSummary {
+export function getMonthSummary(rows: DaySaldoRow[], startSaldo: number, economia = 0): MonthSummary {
   const totalEntradas = rows.reduce((s, r) => s + r.entrada, 0)
   const totalSaidas = rows.reduce((s, r) => s + r.saida, 0)
   const totalDiario = rows.reduce((s, r) => s + r.diario, 0)
   const saidaTotal = totalSaidas + totalDiario
   const performance = totalEntradas - saidaTotal
-  const saldoFinal = rows.length > 0 ? rows[rows.length - 1].saldo : startSaldo
-  return { totalEntradas, totalSaidas, totalDiario, saidaTotal, performance, saldoFinal, startSaldo }
+  const rawSaldo = rows.length > 0 ? rows[rows.length - 1].saldo : startSaldo
+  const saldoFinal = rawSaldo - economia
+  return { totalEntradas, totalSaidas, totalDiario, saidaTotal, performance, economia, saldoFinal, startSaldo }
 }
 
 export function getSaldoStatus(saldo: number, reservaMinima: number): SaldoStatus {

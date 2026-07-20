@@ -44,7 +44,9 @@ export default function YearView() {
       const m = i + 1
       const startSaldo = getStartSaldoForMonth(year, m, data, TODAY, cache)
       const rows = getMonthRows(year, m, startSaldo, data.dias, data.fixos, TODAY)
-      const summary = getMonthSummary(rows, startSaldo)
+      const yyyymm = `${year}-${String(m).padStart(2, '0')}`
+      const economiaDoMes = data.economia[yyyymm] ?? 0
+      const summary = getMonthSummary(rows, startSaldo, economiaDoMes)
       return {
         month: m,
         name: MONTH_NAMES[i].slice(0, 3),
