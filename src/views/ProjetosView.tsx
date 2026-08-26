@@ -129,8 +129,6 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
     setNovoValor('')
   }
 
-  const statusColor = temSaldo ? 'var(--green)' : falta > 0 ? 'var(--red)' : 'var(--ink)'
-
   return (
     <div className="projeto-card">
       {/* Header */}
@@ -317,8 +315,9 @@ export default function ProjetosView() {
   const saldoAtual = useSaldoAtual()
   const mediaMensal = useMediaMensal(3)
 
-  const ativos = projetos.filter((p) => !p.concluido)
-  const concluidos = projetos.filter((p) => p.concluido)
+  const lista = projetos ?? []
+  const ativos = lista.filter((p) => !p.concluido)
+  const concluidos = lista.filter((p) => p.concluido)
 
   return (
     <div>

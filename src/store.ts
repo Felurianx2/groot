@@ -125,20 +125,20 @@ export const useStore = create<AppStore>()(
 
       addProjeto: (nome) =>
         set((state) => ({
-          projetos: [...state.projetos, { id: crypto.randomUUID(), nome, prazo: null, itens: [], concluido: false }],
+          projetos: [...(state.projetos ?? []), { id: crypto.randomUUID(), nome, prazo: null, itens: [], concluido: false }],
         })),
 
       updateProjeto: (id, partial) =>
         set((state) => ({
-          projetos: state.projetos.map((p) => (p.id === id ? { ...p, ...partial } : p)),
+          projetos: (state.projetos ?? []).map((p) => (p.id === id ? { ...p, ...partial } : p)),
         })),
 
       removeProjeto: (id) =>
-        set((state) => ({ projetos: state.projetos.filter((p) => p.id !== id) })),
+        set((state) => ({ projetos: (state.projetos ?? []).filter((p) => p.id !== id) })),
 
       addProjetoItem: (projetoId, item) =>
         set((state) => ({
-          projetos: state.projetos.map((p) =>
+          projetos: (state.projetos ?? []).map((p) =>
             p.id === projetoId
               ? { ...p, itens: [...p.itens, { ...item, id: crypto.randomUUID() }] }
               : p,
@@ -147,7 +147,7 @@ export const useStore = create<AppStore>()(
 
       updateProjetoItem: (projetoId, itemId, partial) =>
         set((state) => ({
-          projetos: state.projetos.map((p) =>
+          projetos: (state.projetos ?? []).map((p) =>
             p.id === projetoId
               ? { ...p, itens: p.itens.map((i) => (i.id === itemId ? { ...i, ...partial } : i)) }
               : p,
@@ -156,7 +156,7 @@ export const useStore = create<AppStore>()(
 
       removeProjetoItem: (projetoId, itemId) =>
         set((state) => ({
-          projetos: state.projetos.map((p) =>
+          projetos: (state.projetos ?? []).map((p) =>
             p.id === projetoId ? { ...p, itens: p.itens.filter((i) => i.id !== itemId) } : p,
           ),
         })),

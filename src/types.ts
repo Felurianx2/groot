@@ -31,7 +31,7 @@ export interface AppData {
   fixos: Fixo[]
   economia: Record<string, number> // "YYYY-MM": value
   notasAno: Record<string, string> // "YYYY": text
-  projetos: Projeto[]
+  projetos?: Projeto[]
 }
 
 export interface ProjetoItem {
