@@ -805,3 +805,11 @@ a { color: var(--primary); text-decoration: none; }
   .projeto-item-row { flex-wrap: wrap; }
   .projeto-parcela-inicio { width: 100px; }
 }
+
+.projeto-parcela-mes-wrap { display: flex; align-items: center; gap: 4px; }
+.projeto-parcela-mes-sel, .projeto-parcela-ano-sel {
+  font-size: 13px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 6px; background: var(--bg); color: var(--ink); cursor: pointer;
+}
+.projeto-parcela-mes-sel { width: 64px; }
+.projeto-parcela-ano-sel { width: 72px; }

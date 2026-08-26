@@ -133,22 +133,41 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
           <select
             className="projeto-parcela-sel"
             value={parcelas}
-            onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelas: Number(e.target.value) })}
+            onChange={(e) => {
+              const n = Number(e.target.value)
+              const inicio = n > 1 ? (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)) : undefined
+              updateProjetoItem(projetoId, item.id, { parcelas: n, parcelaInicio: inicio })
+            }}
             title="Número de parcelas"
           >
             {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48,60].map((n) => (
               <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
             ))}
           </select>
-          {temParcelamento && (
-            <input
-              type="month"
-              className="projeto-parcela-inicio"
-              value={item.parcelaInicio ?? ''}
-              onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || undefined })}
-              title="Mês da 1ª parcela"
-            />
-          )}
+          {temParcelamento && (() => {
+            const [iy, im] = (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)).split('-').map(Number)
+            const anos = Array.from({ length: 6 }, (_, i) => TODAY_YEAR + i)
+            return (
+              <div className="projeto-parcela-mes-wrap">
+                <select
+                  className="projeto-parcela-mes-sel"
+                  value={im}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(iy, Number(e.target.value)) })}
+                >
+                  {MONTH_NAMES.map((name, idx) => (
+                    <option key={idx + 1} value={idx + 1}>{name.slice(0, 3)}</option>
+                  ))}
+                </select>
+                <select
+                  className="projeto-parcela-ano-sel"
+                  value={iy}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(Number(e.target.value), im) })}
+                >
+                  {anos.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            )
+          })()}
         </div>
         {temParcelamento && timeline.length > 0 && (
           <button
