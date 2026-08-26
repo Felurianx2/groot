@@ -857,3 +857,12 @@ a { color: var(--primary); text-decoration: none; }
 
 .fluxo-row-current { background: color-mix(in oklch, var(--primary) 4%, transparent); }
 .fluxo-row-neg { background: color-mix(in oklch, var(--red) 6%, transparent); }
+
+.projeto-tl-item.current {
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+  border-color: var(--primary);
+}
+.projeto-parcela-data {
+  font-size: 13px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 5px 8px; background: var(--bg); color: var(--ink); width: 136px;
+}

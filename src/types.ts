@@ -38,8 +38,9 @@ export interface ProjetoItem {
   id: string
   nome: string
   valor: number
-  parcelas?: number      // 1 = à vista (default)
-  parcelaInicio?: string // "YYYY-MM"
+  parcelas?: number               // 1 = à vista (default)
+  frequencia?: 'mensal' | 'semanal' // default 'mensal'
+  parcelaInicio?: string          // "YYYY-MM" (mensal) ou "YYYY-MM-DD" (semanal)
 }
 
 export interface Projeto {

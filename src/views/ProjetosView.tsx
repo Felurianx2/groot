@@ -25,12 +25,27 @@ function mmLabel(yyyy: number, mm: number) {
 }
 
 // Gera lista de parcelas de um item
-function gerarParcelas(item: ProjetoItem): { mm: string; valor: number; label: string }[] {
+function gerarParcelas(item: ProjetoItem): { mm: string; valor: number; label: string; semana?: number }[] {
   const parcelas = item.parcelas ?? 1
   const inicio = item.parcelaInicio
   if (!inicio) return []
-  const [iy, im] = inicio.split('-').map(Number)
   const valorParcela = item.valor / parcelas
+  const freq = item.frequencia ?? 'mensal'
+
+  if (freq === 'semanal') {
+    // inicio = "YYYY-MM-DD"
+    const base = new Date(inicio + 'T12:00:00')
+    return Array.from({ length: parcelas }, (_, i) => {
+      const d = new Date(base)
+      d.setDate(d.getDate() + i * 7)
+      const y = d.getFullYear()
+      const m = d.getMonth() + 1
+      return { mm: yyyymmStr(y, m), valor: valorParcela, label: mmLabel(y, m), semana: i + 1 }
+    })
+  }
+
+  // mensal
+  const [iy, im] = inicio.split('-').map(Number)
   return Array.from({ length: parcelas }, (_, i) => {
     const [y, m] = addMonths(iy, im, i)
     return { mm: yyyymmStr(y, m), valor: valorParcela, label: mmLabel(y, m) }
@@ -130,44 +145,65 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
         />
         {/* Parcelas */}
         <div className="projeto-parcela-wrap">
+          {/* Frequência */}
+          {temParcelamento && (
+            <select
+              className="projeto-parcela-sel"
+              value={item.frequencia ?? 'mensal'}
+              onChange={(e) => {
+                const f = e.target.value as 'mensal' | 'semanal'
+                const inicio = f === 'semanal' ? TODAY : yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+                updateProjetoItem(projetoId, item.id, { frequencia: f, parcelaInicio: inicio })
+              }}
+              title="Frequência"
+            >
+              <option value="mensal">Mensal</option>
+              <option value="semanal">Semanal</option>
+            </select>
+          )}
+          {/* Nº parcelas */}
           <select
             className="projeto-parcela-sel"
             value={parcelas}
             onChange={(e) => {
               const n = Number(e.target.value)
-              const inicio = n > 1 ? (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)) : undefined
+              const freq = item.frequencia ?? 'mensal'
+              const inicio = n > 1 ? (item.parcelaInicio ?? (freq === 'semanal' ? TODAY : yyyymmStr(TODAY_YEAR, TODAY_MONTH))) : undefined
               updateProjetoItem(projetoId, item.id, { parcelas: n, parcelaInicio: inicio })
             }}
             title="Número de parcelas"
           >
-            {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48,60].map((n) => (
+            {[1,2,3,4,5,6,7,8,9,10,11,12,16,18,24,36,48,60].map((n) => (
               <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
             ))}
           </select>
-          {temParcelamento && (() => {
+          {/* Início */}
+          {temParcelamento && (item.frequencia ?? 'mensal') === 'semanal' ? (
+            <input
+              type="date"
+              className="projeto-parcela-data"
+              value={item.parcelaInicio ?? TODAY}
+              onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || TODAY })}
+              title="Data da 1ª semana"
+            />
+          ) : temParcelamento ? (() => {
             const [iy, im] = (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)).split('-').map(Number)
             const anos = Array.from({ length: 6 }, (_, i) => TODAY_YEAR + i)
             return (
               <div className="projeto-parcela-mes-wrap">
-                <select
-                  className="projeto-parcela-mes-sel"
-                  value={im}
-                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(iy, Number(e.target.value)) })}
-                >
+                <select className="projeto-parcela-mes-sel" value={im}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(iy, Number(e.target.value)) })}>
                   {MONTH_NAMES.map((name, idx) => (
                     <option key={idx + 1} value={idx + 1}>{name.slice(0, 3)}</option>
                   ))}
                 </select>
-                <select
-                  className="projeto-parcela-ano-sel"
-                  value={iy}
-                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(Number(e.target.value), im) })}
-                >
+                <select className="projeto-parcela-ano-sel" value={iy}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: yyyymmStr(Number(e.target.value), im) })}>
                   {anos.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
             )
-          })()}
+          })() : null}
         </div>
         {temParcelamento && timeline.length > 0 && (
           <button
@@ -192,6 +228,7 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
       {temParcelamento && item.valor > 0 && (
         <div className="projeto-parcela-hint">
           {parcelas}x de {fmtBRL(valorParcela)}
+          {(item.frequencia ?? 'mensal') === 'semanal' ? '/sem' : '/mês'}
           {timeline.length > 0 && ` · ${timeline[0].label} → ${timeline[timeline.length - 1].label}`}
         </div>
       )}
@@ -438,6 +475,31 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal: _mediaMensal }: Projeto
           </button>
         </div>
       </div>
+
+      {/* Cards de parcelas por mês */}
+      {totalProjeto > 0 && (() => {
+        const parcelasMapa = calcTimeline(projeto)
+        const entries = Array.from(parcelasMapa.entries()).sort(([a], [b]) => a.localeCompare(b))
+        if (entries.length === 0) return null
+        return (
+          <div className="projeto-timeline">
+            <div className="projeto-timeline-title">Parcelas por mês</div>
+            <div className="projeto-timeline-grid">
+              {entries.map(([mm, valor]) => {
+                const [y, m] = mm.split('-').map(Number)
+                const isPast = mm < yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+                const isCurrent = mm === yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+                return (
+                  <div key={mm} className={`projeto-tl-item${isPast ? ' past' : isCurrent ? ' current' : ''}`}>
+                    <span className="projeto-tl-mm">{mmLabel(y, m)}</span>
+                    <span className="projeto-tl-val">{fmtBRL(valor)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Fluxo de caixa futuro */}
       {totalProjeto > 0 && fluxo.length > 0 && (
