@@ -31,8 +31,23 @@ export interface AppData {
   fixos: Fixo[]
   economia: Record<string, number> // "YYYY-MM": value
   notasAno: Record<string, string> // "YYYY": text
+  projetos: Projeto[]
+}
+
+export interface ProjetoItem {
+  id: string
+  nome: string
+  valor: number
+}
+
+export interface Projeto {
+  id: string
+  nome: string
+  prazo: string | null // "YYYY-MM-DD" or null
+  itens: ProjetoItem[]
+  concluido: boolean
 }
 
 export type SaldoStatus = 'green' | 'yellow' | 'red'
 
-export type ActiveView = 'month' | 'year' | 'fixos' | 'economia' | 'config'
+export type ActiveView = 'month' | 'year' | 'fixos' | 'economia' | 'projetos' | 'config'

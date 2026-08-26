@@ -7,6 +7,7 @@ import MonthView from './views/MonthView'
 import YearView from './views/YearView'
 import FixosView from './views/FixosView'
 import EconomiaView from './views/EconomiaView'
+import ProjetosView from './views/ProjetosView'
 import ConfigView from './views/ConfigView'
 import LoginView from './views/LoginView'
 
@@ -31,6 +32,7 @@ function AppShell() {
         fixos: remote.fixos ?? store.fixos,
         economia: remote.economia ?? store.economia,
         notasAno: remote.notasAno ?? store.notasAno,
+        projetos: remote.projetos ?? store.projetos ?? [],
       })
     })
   }, [user])
@@ -38,11 +40,11 @@ function AppShell() {
   // Sync automático a cada mudança (debounced 1.5s)
   useEffect(() => {
     if (!user) return
-    const { saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno } = store
-    debouncedSave({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno })
+    const { saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos } = store
+    debouncedSave({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos })
   }, [
     store.saldoInicial, store.reservaMinima, store.horizonteMeses,
-    store.dias, store.fixos, store.economia, store.notasAno,
+    store.dias, store.fixos, store.economia, store.notasAno, store.projetos,
     user,
   ])
 
@@ -54,6 +56,7 @@ function AppShell() {
         {activeView === 'year' && <YearView />}
         {activeView === 'fixos' && <FixosView />}
         {activeView === 'economia' && <EconomiaView />}
+        {activeView === 'projetos' && <ProjetosView />}
         {activeView === 'config' && <ConfigView />}
       </main>
     </>

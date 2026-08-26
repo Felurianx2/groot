@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { AppData, DayEntry, DiarioItem, Fixo, ActiveView } from './types'
+import type { AppData, DayEntry, DiarioItem, Fixo, Projeto, ProjetoItem, ActiveView } from './types'
 
 interface AppStore extends AppData {
   currentYear: number
@@ -20,6 +20,12 @@ interface AppStore extends AppData {
   setEconomia(yyyymm: string, value: number): void
   setNotaAno(yyyy: string, nota: string): void
   updateConfig(config: Partial<Pick<AppData, 'saldoInicial' | 'reservaMinima' | 'horizonteMeses'>>): void
+  addProjeto(nome: string): void
+  updateProjeto(id: string, partial: Partial<Omit<Projeto, 'id' | 'itens'>>): void
+  removeProjeto(id: string): void
+  addProjetoItem(projetoId: string, item: Omit<ProjetoItem, 'id'>): void
+  updateProjetoItem(projetoId: string, itemId: string, partial: Partial<Omit<ProjetoItem, 'id'>>): void
+  removeProjetoItem(projetoId: string, itemId: string): void
 }
 
 const now = new Date()
@@ -34,6 +40,7 @@ export const useStore = create<AppStore>()(
       fixos: [],
       economia: {},
       notasAno: {},
+      projetos: [],
       currentYear: now.getFullYear(),
       currentMonth: now.getMonth() + 1,
       activeView: 'month',
@@ -115,6 +122,44 @@ export const useStore = create<AppStore>()(
         set((state) => ({ notasAno: { ...state.notasAno, [yyyy]: nota } })),
 
       updateConfig: (config) => set(config),
+
+      addProjeto: (nome) =>
+        set((state) => ({
+          projetos: [...state.projetos, { id: crypto.randomUUID(), nome, prazo: null, itens: [], concluido: false }],
+        })),
+
+      updateProjeto: (id, partial) =>
+        set((state) => ({
+          projetos: state.projetos.map((p) => (p.id === id ? { ...p, ...partial } : p)),
+        })),
+
+      removeProjeto: (id) =>
+        set((state) => ({ projetos: state.projetos.filter((p) => p.id !== id) })),
+
+      addProjetoItem: (projetoId, item) =>
+        set((state) => ({
+          projetos: state.projetos.map((p) =>
+            p.id === projetoId
+              ? { ...p, itens: [...p.itens, { ...item, id: crypto.randomUUID() }] }
+              : p,
+          ),
+        })),
+
+      updateProjetoItem: (projetoId, itemId, partial) =>
+        set((state) => ({
+          projetos: state.projetos.map((p) =>
+            p.id === projetoId
+              ? { ...p, itens: p.itens.map((i) => (i.id === itemId ? { ...i, ...partial } : i)) }
+              : p,
+          ),
+        })),
+
+      removeProjetoItem: (projetoId, itemId) =>
+        set((state) => ({
+          projetos: state.projetos.map((p) =>
+            p.id === projetoId ? { ...p, itens: p.itens.filter((i) => i.id !== itemId) } : p,
+          ),
+        })),
     }),
     { name: 'groot-v1' },
   ),

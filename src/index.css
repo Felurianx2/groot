@@ -607,3 +607,124 @@ a { color: var(--primary); text-decoration: none; }
     animation-duration: 0ms !important;
   }
 }
+
+/* ── Projetos ──────────────────────────────────────────────────────────── */
+.projetos-lista { display: flex; flex-direction: column; gap: 20px; margin-top: 16px; }
+
+.projeto-contexto {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 13px; color: var(--ink-muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 4px;
+}
+.projeto-contexto-sep { color: var(--border); }
+
+.projeto-placeholder {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 48px 24px; color: var(--ink-muted); text-align: center; font-size: 14px;
+}
+
+.projeto-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.projeto-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 12px;
+}
+
+.projeto-nome {
+  font-size: 16px; font-weight: 700; margin: 0; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+.projeto-nome:hover { color: var(--primary); }
+
+.projeto-nome-input {
+  font-size: 16px; font-weight: 700; border: none;
+  background: var(--bg); color: var(--ink);
+  border-radius: 6px; padding: 2px 6px; outline: 2px solid var(--primary);
+}
+
+.projeto-prazo-label {
+  font-size: 12px; color: var(--ink-muted); display: flex; align-items: center; gap: 6px;
+}
+.projeto-prazo-input {
+  font-size: 12px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 3px 6px; background: var(--bg); color: var(--ink);
+}
+
+.projeto-remove-btn {
+  background: none; border: none; cursor: pointer; color: var(--ink-muted);
+  padding: 4px; border-radius: 6px; display: flex; align-items: center;
+  transition: color 120ms, background 120ms;
+}
+.projeto-remove-btn:hover { color: var(--red); background: color-mix(in oklch, var(--red) 10%, transparent); }
+
+.projeto-itens { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+.projeto-empty { font-size: 13px; color: var(--ink-muted); margin: 0; padding: 8px 0; }
+
+.projeto-item-row, .projeto-add-row {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.projeto-item-nome {
+  flex: 1; font-size: 14px; border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; background: var(--bg); color: var(--ink);
+  min-width: 0;
+}
+.projeto-item-nome:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+.projeto-item-valor {
+  width: 110px; font-size: 14px; text-align: right;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; background: var(--bg); color: var(--ink);
+}
+.projeto-item-valor:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+.projeto-item-remove {
+  background: none; border: none; cursor: pointer; color: var(--ink-muted);
+  padding: 4px; border-radius: 6px; display: flex; align-items: center;
+  transition: color 120ms;
+}
+.projeto-item-remove:hover { color: var(--red); }
+
+.projeto-add-btn {
+  background: var(--primary-tint); color: var(--primary); border: none;
+  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  display: flex; align-items: center; font-size: 14px; font-weight: 700;
+  transition: background 120ms;
+}
+.projeto-add-btn:hover { background: color-mix(in oklch, var(--primary) 20%, transparent); }
+
+.projeto-projecao {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.projeto-projecao-row {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; color: var(--ink-muted);
+}
+.projeto-projecao-row strong { font-size: 14px; color: var(--ink); }
+.projeto-projecao-divider { border-top: 1px solid var(--border); margin: 4px 0; }
+
+.projeto-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; border-radius: 8px; padding: 10px 12px; margin-top: 4px;
+}
+.projeto-status-ok { background: color-mix(in oklch, var(--green) 12%, transparent); color: var(--green); }
+.projeto-status-risco { background: color-mix(in oklch, var(--yellow) 15%, transparent); color: var(--yellow); }
+.projeto-status-impossivel { background: color-mix(in oklch, var(--red) 12%, transparent); color: var(--red); }
+
+.projeto-sem-dados { font-size: 13px; color: var(--ink-muted); margin: 0; }
+
+@media (max-width: 640px) {
+  .projeto-header { flex-wrap: wrap; }
+  .projeto-prazo-label { font-size: 11px; }
+  .projeto-item-valor { width: 80px; }
+  .projeto-contexto { font-size: 12px; }
+}
