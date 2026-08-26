@@ -6,15 +6,48 @@ import {
   getMonthSummary,
   fmtBRL,
   yyyymmStr,
+  MONTH_NAMES,
 } from '../calculations'
-import type { Projeto } from '../types'
+import type { Projeto, ProjetoItem } from '../types'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const NOW = new Date()
 const TODAY_YEAR = NOW.getFullYear()
 const TODAY_MONTH = NOW.getMonth() + 1
 
-// Calcula performance média dos últimos N meses com dados reais
+function addMonths(yyyy: number, mm: number, n: number): [number, number] {
+  const total = mm - 1 + n
+  return [yyyy + Math.floor(total / 12), (total % 12) + 1]
+}
+
+function mmLabel(yyyy: number, mm: number) {
+  return `${MONTH_NAMES[mm - 1].slice(0, 3)}/${String(yyyy).slice(2)}`
+}
+
+// Gera lista de parcelas de um item
+function gerarParcelas(item: ProjetoItem): { mm: string; valor: number; label: string }[] {
+  const parcelas = item.parcelas ?? 1
+  const inicio = item.parcelaInicio
+  if (!inicio) return []
+  const [iy, im] = inicio.split('-').map(Number)
+  const valorParcela = item.valor / parcelas
+  return Array.from({ length: parcelas }, (_, i) => {
+    const [y, m] = addMonths(iy, im, i)
+    return { mm: yyyymmStr(y, m), valor: valorParcela, label: mmLabel(y, m) }
+  })
+}
+
+// Mapa de mm -> total de parcelas do projeto
+function calcTimeline(projeto: Projeto): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const item of projeto.itens) {
+    for (const p of gerarParcelas(item)) {
+      map.set(p.mm, (map.get(p.mm) ?? 0) + p.valor)
+    }
+  }
+  return map
+}
+
 function useMediaMensal(n = 3) {
   const saldoInicial = useStore((s) => s.saldoInicial)
   const reservaMinima = useStore((s) => s.reservaMinima)
@@ -29,7 +62,6 @@ function useMediaMensal(n = 3) {
     const data = { saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos }
     const cache = new Map<string, number>()
     const performances: number[] = []
-
     for (let i = 1; i <= n; i++) {
       let y = TODAY_YEAR
       let m = TODAY_MONTH - i
@@ -39,10 +71,8 @@ function useMediaMensal(n = 3) {
       if (!hasDados) continue
       const start = getStartSaldoForMonth(y, m, data, TODAY, cache)
       const rows = getMonthRows(y, m, start, dias, fixos, TODAY)
-      const s = getMonthSummary(rows, start)
-      performances.push(s.performance)
+      performances.push(getMonthSummary(rows, start).performance)
     }
-
     if (performances.length === 0) return null
     return performances.reduce((a, b) => a + b, 0) / performances.length
   }, [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos])
@@ -63,13 +93,107 @@ function useSaldoAtual() {
     const cache = new Map<string, number>()
     const start = getStartSaldoForMonth(TODAY_YEAR, TODAY_MONTH, data, TODAY, cache)
     const rows = getMonthRows(TODAY_YEAR, TODAY_MONTH, start, dias, fixos, TODAY)
-    // Saldo até hoje (último dia já passado)
     const todayDay = NOW.getDate()
-    const rowAteHoje = rows.filter((r) => r.day <= todayDay)
-    return rowAteHoje.length > 0 ? rowAteHoje[rowAteHoje.length - 1].saldo : start
+    const ate = rows.filter((r) => r.day <= todayDay)
+    return ate.length > 0 ? ate[ate.length - 1].saldo : start
   }, [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos])
 }
 
+// ─── Item row ────────────────────────────────────────────────────────────────
+function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) {
+  const updateProjetoItem = useStore((s) => s.updateProjetoItem)
+  const removeProjetoItem = useStore((s) => s.removeProjetoItem)
+  const [expanded, setExpanded] = useState(false)
+
+  const parcelas = item.parcelas ?? 1
+  const valorParcela = item.valor / parcelas
+  const timeline = gerarParcelas(item)
+  const temParcelamento = parcelas > 1
+
+  return (
+    <div className="projeto-item-wrap">
+      <div className="projeto-item-row">
+        <input
+          className="projeto-item-nome"
+          value={item.nome}
+          onChange={(e) => updateProjetoItem(projetoId, item.id, { nome: e.target.value })}
+          placeholder="Descrição"
+        />
+        <input
+          className="projeto-item-valor"
+          type="number"
+          min="0"
+          step="0.01"
+          value={item.valor || ''}
+          onChange={(e) => updateProjetoItem(projetoId, item.id, { valor: parseFloat(e.target.value) || 0 })}
+          placeholder="0,00"
+        />
+        {/* Parcelas */}
+        <div className="projeto-parcela-wrap">
+          <select
+            className="projeto-parcela-sel"
+            value={parcelas}
+            onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelas: Number(e.target.value) })}
+            title="Número de parcelas"
+          >
+            {[1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48,60].map((n) => (
+              <option key={n} value={n}>{n === 1 ? 'À vista' : `${n}x`}</option>
+            ))}
+          </select>
+          {temParcelamento && (
+            <input
+              type="month"
+              className="projeto-parcela-inicio"
+              value={item.parcelaInicio ?? ''}
+              onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || undefined })}
+              title="Mês da 1ª parcela"
+            />
+          )}
+        </div>
+        {temParcelamento && timeline.length > 0 && (
+          <button
+            className="projeto-parcela-toggle"
+            onClick={() => setExpanded((v) => !v)}
+            title="Ver cronograma"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ transform: expanded ? 'rotate(180deg)' : undefined, transition: 'transform 150ms' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        )}
+        <button className="projeto-item-remove" onClick={() => removeProjetoItem(projetoId, item.id)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Parcela hint */}
+      {temParcelamento && item.valor > 0 && (
+        <div className="projeto-parcela-hint">
+          {parcelas}x de {fmtBRL(valorParcela)}
+          {timeline.length > 0 && ` · ${timeline[0].label} → ${timeline[timeline.length - 1].label}`}
+        </div>
+      )}
+
+      {/* Cronograma expandido */}
+      {expanded && timeline.length > 0 && (
+        <div className="projeto-cronograma">
+          {timeline.map((p, i) => (
+            <div key={p.mm} className="projeto-crono-item">
+              <span className="projeto-crono-n">{i + 1}/{parcelas}</span>
+              <span className="projeto-crono-mm">{p.label}</span>
+              <span className="projeto-crono-val">{fmtBRL(p.valor)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Projeto Card ─────────────────────────────────────────────────────────────
 interface ProjetoCardProps {
   projeto: Projeto
   saldoAtual: number
@@ -78,8 +202,6 @@ interface ProjetoCardProps {
 
 function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
   const addProjetoItem = useStore((s) => s.addProjetoItem)
-  const updateProjetoItem = useStore((s) => s.updateProjetoItem)
-  const removeProjetoItem = useStore((s) => s.removeProjetoItem)
   const updateProjeto = useStore((s) => s.updateProjeto)
   const removeProjeto = useStore((s) => s.removeProjeto)
 
@@ -88,33 +210,43 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
   const [editandoNome, setEditandoNome] = useState(false)
   const [nomeTemp, setNomeTemp] = useState(projeto.nome)
 
-  const total = projeto.itens.reduce((s, i) => s + i.valor, 0)
-  const falta = Math.max(0, total - saldoAtual)
-  const temSaldo = saldoAtual >= total
+  // Total à vista (itens sem parcelamento ou sem início definido)
+  const totalAvista = projeto.itens
+    .filter((i) => (i.parcelas ?? 1) === 1 || !i.parcelaInicio)
+    .reduce((s, i) => s + i.valor, 0)
 
-  // Projeção: quantos meses até ter o dinheiro
+  // Total parcelado (custo total de todos os itens com parcelas)
+  const totalProjeto = projeto.itens.reduce((s, i) => s + i.valor, 0)
+
+  // Timeline: mm -> total de parcelas naquele mês
+  const timeline = useMemo(() => calcTimeline(projeto), [projeto])
+  const timelineEntries = Array.from(timeline.entries()).sort(([a], [b]) => a.localeCompare(b))
+
+  // Para projeção: considera custo à vista + parcela mais pesada no pior mês
+  const maiorMes = timelineEntries.reduce((max, [, v]) => Math.max(max, v), 0)
+  const custoEfetivo = totalAvista + maiorMes // o mês mais pesado
+
+  const temSaldo = saldoAtual >= custoEfetivo
+  const falta = Math.max(0, custoEfetivo - saldoAtual)
+
   let mesesEstimado: number | null = null
   let dataEstimada: string | null = null
   if (!temSaldo && mediaMensal && mediaMensal > 0) {
     mesesEstimado = Math.ceil(falta / mediaMensal)
-    const dataAlvo = new Date(NOW)
-    dataAlvo.setMonth(dataAlvo.getMonth() + mesesEstimado)
-    dataEstimada = dataAlvo.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    const alvo = new Date(NOW)
+    alvo.setMonth(alvo.getMonth() + mesesEstimado)
+    dataEstimada = alvo.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   }
 
-  // Prazo: checar se vai dar no prazo
   let prazoStatus: 'ok' | 'risco' | 'impossivel' | null = null
   if (projeto.prazo && !temSaldo) {
     const prazoDate = new Date(projeto.prazo + 'T00:00:00')
     const mesesAtePrazo = Math.max(0,
-      (prazoDate.getFullYear() - NOW.getFullYear()) * 12 +
-      (prazoDate.getMonth() - NOW.getMonth())
+      (prazoDate.getFullYear() - NOW.getFullYear()) * 12 + (prazoDate.getMonth() - NOW.getMonth())
     )
     if (mediaMensal && mediaMensal > 0) {
-      const podeJuntar = mediaMensal * mesesAtePrazo
-      if (podeJuntar >= falta) prazoStatus = 'ok'
-      else if (podeJuntar >= falta * 0.8) prazoStatus = 'risco'
-      else prazoStatus = 'impossivel'
+      const pode = mediaMensal * mesesAtePrazo
+      prazoStatus = pode >= falta ? 'ok' : pode >= falta * 0.8 ? 'risco' : 'impossivel'
     } else {
       prazoStatus = 'impossivel'
     }
@@ -124,7 +256,7 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
     const nome = novoNome.trim()
     const valor = parseFloat(novoValor.replace(',', '.'))
     if (!nome || isNaN(valor) || valor <= 0) return
-    addProjetoItem(projeto.id, { nome, valor })
+    addProjetoItem(projeto.id, { nome, valor, parcelas: 1 })
     setNovoNome('')
     setNovoValor('')
   }
@@ -174,32 +306,14 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
 
       {/* Itens */}
       <div className="projeto-itens">
+        <div className="projeto-itens-header">
+          <span>Despesa</span><span>Valor total</span><span>Parcelamento</span>
+        </div>
         {projeto.itens.length === 0 && (
-          <p className="projeto-empty">Adicione os gastos do projeto abaixo.</p>
+          <p className="projeto-empty">Adicione as despesas do projeto abaixo.</p>
         )}
         {projeto.itens.map((item) => (
-          <div key={item.id} className="projeto-item-row">
-            <input
-              className="projeto-item-nome"
-              value={item.nome}
-              onChange={(e) => updateProjetoItem(projeto.id, item.id, { nome: e.target.value })}
-              placeholder="Descrição"
-            />
-            <input
-              className="projeto-item-valor"
-              type="number"
-              min="0"
-              step="0.01"
-              value={item.valor || ''}
-              onChange={(e) => updateProjetoItem(projeto.id, item.id, { valor: parseFloat(e.target.value) || 0 })}
-              placeholder="0,00"
-            />
-            <button className="projeto-item-remove" onClick={() => removeProjetoItem(projeto.id, item.id)}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
+          <ItemRow key={item.id} item={item} projetoId={projeto.id} />
         ))}
 
         {/* Adicionar item */}
@@ -222,27 +336,58 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
             onKeyDown={(e) => e.key === 'Enter' && salvarItem()}
           />
           <button className="projeto-add-btn" onClick={salvarItem} title="Adicionar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
         </div>
       </div>
 
+      {/* Timeline de parcelas */}
+      {timelineEntries.length > 0 && (
+        <div className="projeto-timeline">
+          <div className="projeto-timeline-title">Cronograma de pagamentos</div>
+          <div className="projeto-timeline-grid">
+            {timelineEntries.map(([mm, valor]) => {
+              const [y, m] = mm.split('-').map(Number)
+              const isPast = mm < yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+              return (
+                <div key={mm} className={`projeto-tl-item${isPast ? ' past' : ''}`}>
+                  <span className="projeto-tl-mm">{mmLabel(y, m)}</span>
+                  <span className="projeto-tl-val">{fmtBRL(valor)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Projeção */}
-      {total > 0 && (
+      {totalProjeto > 0 && (
         <div className="projeto-projecao">
           <div className="projeto-projecao-row">
-            <span>Total do projeto</span>
-            <strong>{fmtBRL(total)}</strong>
+            <span>Custo total do projeto</span>
+            <strong>{fmtBRL(totalProjeto)}</strong>
           </div>
+          {totalAvista > 0 && totalAvista < totalProjeto && (
+            <div className="projeto-projecao-row">
+              <span>Pagamento imediato (à vista)</span>
+              <strong>{fmtBRL(totalAvista)}</strong>
+            </div>
+          )}
+          {maiorMes > 0 && (
+            <div className="projeto-projecao-row">
+              <span>Maior mês de parcelas</span>
+              <strong>{fmtBRL(maiorMes)}</strong>
+            </div>
+          )}
           <div className="projeto-projecao-row">
             <span>Saldo disponível hoje</span>
             <strong style={{ color: 'var(--green)' }}>{fmtBRL(saldoAtual)}</strong>
           </div>
           {!temSaldo && (
             <div className="projeto-projecao-row">
-              <span>Falta</span>
+              <span>Falta para o pior mês</span>
               <strong style={{ color: 'var(--red)' }}>{fmtBRL(falta)}</strong>
             </div>
           )}
@@ -250,10 +395,8 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
 
           {temSaldo ? (
             <div className="projeto-status projeto-status-ok">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Você já tem saldo suficiente para este projeto!
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              Saldo suficiente para começar o projeto!
             </div>
           ) : mediaMensal && mediaMensal > 0 ? (
             <>
@@ -271,37 +414,14 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
               )}
               {projeto.prazo && prazoStatus && (
                 <div className={`projeto-status projeto-status-${prazoStatus}`}>
-                  {prazoStatus === 'ok' && (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Vai dar no prazo!
-                    </>
-                  )}
-                  {prazoStatus === 'risco' && (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-                      </svg>
-                      Apertado — possível, mas sem folga.
-                    </>
-                  )}
-                  {prazoStatus === 'impossivel' && (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                      </svg>
-                      O prazo está curto com a performance atual.
-                    </>
-                  )}
+                  {prazoStatus === 'ok' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Vai dar no prazo!</>}
+                  {prazoStatus === 'risco' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>Apertado — possível, mas sem folga.</>}
+                  {prazoStatus === 'impossivel' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Prazo curto com a performance atual.</>}
                 </div>
               )}
             </>
           ) : (
-            <p className="projeto-sem-dados">
-              Sem dados suficientes para projeção — registre ao menos 1 mês completo.
-            </p>
+            <p className="projeto-sem-dados">Sem dados suficientes — registre ao menos 1 mês completo.</p>
           )}
         </div>
       )}
@@ -309,6 +429,7 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
   )
 }
 
+// ─── View ─────────────────────────────────────────────────────────────────────
 export default function ProjetosView() {
   const projetos = useStore((s) => s.projetos)
   const addProjeto = useStore((s) => s.addProjeto)
