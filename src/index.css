@@ -813,3 +813,47 @@ a { color: var(--primary); text-decoration: none; }
 }
 .projeto-parcela-mes-sel { width: 64px; }
 .projeto-parcela-ano-sel { width: 72px; }
+
+/* Fluxo de caixa do projeto */
+.projeto-fluxo { border-top: 1px solid var(--border); }
+.projeto-fluxo-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 8px; gap: 12px; flex-wrap: wrap;
+}
+.projeto-fluxo-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); }
+.projeto-fluxo-alerta { color: var(--red); font-weight: 700; }
+.projeto-fluxo-legend { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-muted); }
+.projeto-fluxo-leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+.projeto-fluxo-wrap { overflow-x: auto; }
+.projeto-fluxo-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.projeto-fluxo-table thead th {
+  padding: 6px 12px; text-align: right; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--ink-muted);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.projeto-fluxo-table thead th:first-child { text-align: left; }
+.projeto-fluxo-table tbody tr { border-bottom: 1px solid var(--border); }
+.projeto-fluxo-table tbody tr:last-child { border-bottom: none; }
+.projeto-fluxo-table td { padding: 8px 12px; vertical-align: middle; }
+
+.fluxo-mm { font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.fluxo-tag {
+  font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+  color: var(--primary); text-transform: uppercase;
+}
+.fluxo-tag-prazo {
+  background: color-mix(in oklch, var(--yellow) 18%, transparent);
+  color: var(--yellow);
+}
+.fluxo-num { text-align: right; white-space: nowrap; color: var(--ink-muted); }
+.fluxo-num.pos { color: var(--green); }
+.fluxo-num.neg { color: var(--red); }
+.fluxo-projeto { color: var(--primary) !important; font-weight: 600; }
+.fluxo-saldo-fim strong { font-size: 14px; }
+
+.fluxo-row-current { background: color-mix(in oklch, var(--primary) 4%, transparent); }
+.fluxo-row-neg { background: color-mix(in oklch, var(--red) 6%, transparent); }

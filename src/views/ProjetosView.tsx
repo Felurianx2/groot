@@ -212,6 +212,108 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
   )
 }
 
+// ─── Fluxo de caixa futuro com projeto ───────────────────────────────────────
+interface FluxoMes {
+  mm: string
+  label: string
+  saldoInicio: number
+  entradas: number
+  saidas: number
+  parcelas: number   // parcelas do projeto neste mês
+  aVista: number     // itens à vista cobrados neste mês (mês de início do projeto)
+  saldoFim: number
+  negativo: boolean
+}
+
+function useFluxoProjeto(projeto: Projeto, saldoAtualHoje: number): FluxoMes[] {
+  const dias = useStore((s) => s.dias)
+  const fixos = useStore((s) => s.fixos)
+  const saldoInicial = useStore((s) => s.saldoInicial)
+  const reservaMinima = useStore((s) => s.reservaMinima)
+  const horizonteMeses = useStore((s) => s.horizonteMeses)
+  const economia = useStore((s) => s.economia)
+  const notasAno = useStore((s) => s.notasAno)
+  const projetos = useStore((s) => s.projetos)
+
+  return useMemo(() => {
+    const data = { saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos }
+    const cache = new Map<string, number>()
+
+    // Parcelas do projeto por mês
+    const parcelasMapa = calcTimeline(projeto)
+
+    // Itens à vista: custo total no primeiro mês que o projeto começa
+    // (se não há parcelas definidas, considera tudo no mês atual)
+    const totalAvista = projeto.itens
+      .filter((i) => (i.parcelas ?? 1) === 1 || !i.parcelaInicio)
+      .reduce((s, i) => s + i.valor, 0)
+
+    // Determina o primeiro mês relevante do projeto
+    const allMeses = [...parcelasMapa.keys()]
+    const primeiroMes = allMeses.length > 0 ? allMeses.sort()[0] : yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+    const ultimoMes = allMeses.length > 0 ? allMeses.sort().reverse()[0] : primeiroMes
+
+    // Janela: do mês atual até o último mês do projeto + 2, mínimo 6 meses
+    const [uy, um] = ultimoMes.split('-').map(Number)
+    const [ey, em] = addMonths(uy, um, 2)
+    let totalMeses = (ey - TODAY_YEAR) * 12 + (em - TODAY_MONTH) + 1
+    if (totalMeses < 6) totalMeses = 6
+
+    const fluxo: FluxoMes[] = []
+    let saldoCorrente = saldoAtualHoje
+
+    for (let i = 0; i < totalMeses; i++) {
+      const [y, m] = addMonths(TODAY_YEAR, TODAY_MONTH, i)
+      const mm = yyyymmStr(y, m)
+      const isFuture = mm > yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+
+      let entradas = 0
+      let saidas = 0
+
+      if (isFuture) {
+        // Usa fixos projetados para meses futuros
+        const startMes = getStartSaldoForMonth(y, m, data, TODAY, cache)
+        const rows = getMonthRows(y, m, startMes, dias, fixos, TODAY)
+        const summary = getMonthSummary(rows, startMes)
+        entradas = summary.totalEntradas
+        saidas = summary.totalSaidas + summary.totalDiario
+      } else {
+        // Mês atual: usa dados reais já lançados
+        const startMes = getStartSaldoForMonth(y, m, data, TODAY, cache)
+        const rows = getMonthRows(y, m, startMes, dias, fixos, TODAY)
+        const summary = getMonthSummary(rows, startMes)
+        entradas = summary.totalEntradas
+        saidas = summary.totalSaidas + summary.totalDiario
+        // saldo corrente já reflete o mês atual
+        saldoCorrente = startMes + summary.performance
+      }
+
+      const parcelasMes = parcelasMapa.get(mm) ?? 0
+      const aVistaMes = mm === primeiroMes ? totalAvista : 0
+      const saqueTotal = parcelasMes + aVistaMes
+
+      const saldoInicio = i === 0 ? saldoAtualHoje : fluxo[i - 1].saldoFim
+      const saldoFim = isFuture
+        ? saldoInicio + entradas - saidas - saqueTotal
+        : saldoCorrente - saqueTotal
+
+      fluxo.push({
+        mm,
+        label: mmLabel(y, m),
+        saldoInicio: i === 0 ? saldoAtualHoje : fluxo[i - 1].saldoFim,
+        entradas,
+        saidas,
+        parcelas: parcelasMes,
+        aVista: aVistaMes,
+        saldoFim,
+        negativo: saldoFim < 0,
+      })
+    }
+
+    return fluxo
+  }, [projeto, saldoAtualHoje, saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos])
+}
+
 // ─── Projeto Card ─────────────────────────────────────────────────────────────
 interface ProjetoCardProps {
   projeto: Projeto
@@ -219,7 +321,7 @@ interface ProjetoCardProps {
   mediaMensal: number | null
 }
 
-function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
+function ProjetoCard({ projeto, saldoAtual, mediaMensal: _mediaMensal }: ProjetoCardProps) {
   const addProjetoItem = useStore((s) => s.addProjetoItem)
   const updateProjeto = useStore((s) => s.updateProjeto)
   const removeProjeto = useStore((s) => s.removeProjeto)
@@ -229,45 +331,20 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
   const [editandoNome, setEditandoNome] = useState(false)
   const [nomeTemp, setNomeTemp] = useState(projeto.nome)
 
-  // Total à vista (itens sem parcelamento ou sem início definido)
-  const totalAvista = projeto.itens
-    .filter((i) => (i.parcelas ?? 1) === 1 || !i.parcelaInicio)
-    .reduce((s, i) => s + i.valor, 0)
-
-  // Total parcelado (custo total de todos os itens com parcelas)
   const totalProjeto = projeto.itens.reduce((s, i) => s + i.valor, 0)
+  const fluxo = useFluxoProjeto(projeto, saldoAtual)
+  const temMesNegativo = fluxo.some((f) => f.negativo)
 
-  // Timeline: mm -> total de parcelas naquele mês
-  const timeline = useMemo(() => calcTimeline(projeto), [projeto])
-  const timelineEntries = Array.from(timeline.entries()).sort(([a], [b]) => a.localeCompare(b))
-
-  // Para projeção: considera custo à vista + parcela mais pesada no pior mês
-  const maiorMes = timelineEntries.reduce((max, [, v]) => Math.max(max, v), 0)
-  const custoEfetivo = totalAvista + maiorMes // o mês mais pesado
-
-  const temSaldo = saldoAtual >= custoEfetivo
-  const falta = Math.max(0, custoEfetivo - saldoAtual)
-
-  let mesesEstimado: number | null = null
-  let dataEstimada: string | null = null
-  if (!temSaldo && mediaMensal && mediaMensal > 0) {
-    mesesEstimado = Math.ceil(falta / mediaMensal)
-    const alvo = new Date(NOW)
-    alvo.setMonth(alvo.getMonth() + mesesEstimado)
-    dataEstimada = alvo.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-  }
-
+  // Prazo check
   let prazoStatus: 'ok' | 'risco' | 'impossivel' | null = null
-  if (projeto.prazo && !temSaldo) {
-    const prazoDate = new Date(projeto.prazo + 'T00:00:00')
-    const mesesAtePrazo = Math.max(0,
-      (prazoDate.getFullYear() - NOW.getFullYear()) * 12 + (prazoDate.getMonth() - NOW.getMonth())
-    )
-    if (mediaMensal && mediaMensal > 0) {
-      const pode = mediaMensal * mesesAtePrazo
-      prazoStatus = pode >= falta ? 'ok' : pode >= falta * 0.8 ? 'risco' : 'impossivel'
-    } else {
-      prazoStatus = 'impossivel'
+  if (projeto.prazo && totalProjeto > 0) {
+    const prazoMm = projeto.prazo.slice(0, 7)
+    const fluxoAtePrazo = fluxo.filter((f) => f.mm <= prazoMm)
+    const mesNegativoAtePrazo = fluxoAtePrazo.some((f) => f.negativo)
+    if (!mesNegativoAtePrazo) prazoStatus = 'ok'
+    else {
+      const piorSaldo = Math.min(...fluxoAtePrazo.map((f) => f.saldoFim))
+      prazoStatus = piorSaldo > -saldoAtual * 0.1 ? 'risco' : 'impossivel'
     }
   }
 
@@ -362,86 +439,73 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal }: ProjetoCardProps) {
         </div>
       </div>
 
-      {/* Timeline de parcelas */}
-      {timelineEntries.length > 0 && (
-        <div className="projeto-timeline">
-          <div className="projeto-timeline-title">Cronograma de pagamentos</div>
-          <div className="projeto-timeline-grid">
-            {timelineEntries.map(([mm, valor]) => {
-              const [y, m] = mm.split('-').map(Number)
-              const isPast = mm < yyyymmStr(TODAY_YEAR, TODAY_MONTH)
-              return (
-                <div key={mm} className={`projeto-tl-item${isPast ? ' past' : ''}`}>
-                  <span className="projeto-tl-mm">{mmLabel(y, m)}</span>
-                  <span className="projeto-tl-val">{fmtBRL(valor)}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Projeção */}
-      {totalProjeto > 0 && (
-        <div className="projeto-projecao">
-          <div className="projeto-projecao-row">
-            <span>Custo total do projeto</span>
-            <strong>{fmtBRL(totalProjeto)}</strong>
-          </div>
-          {totalAvista > 0 && totalAvista < totalProjeto && (
-            <div className="projeto-projecao-row">
-              <span>Pagamento imediato (à vista)</span>
-              <strong>{fmtBRL(totalAvista)}</strong>
-            </div>
-          )}
-          {maiorMes > 0 && (
-            <div className="projeto-projecao-row">
-              <span>Maior mês de parcelas</span>
-              <strong>{fmtBRL(maiorMes)}</strong>
-            </div>
-          )}
-          <div className="projeto-projecao-row">
-            <span>Saldo disponível hoje</span>
-            <strong style={{ color: 'var(--green)' }}>{fmtBRL(saldoAtual)}</strong>
-          </div>
-          {!temSaldo && (
-            <div className="projeto-projecao-row">
-              <span>Falta para o pior mês</span>
-              <strong style={{ color: 'var(--red)' }}>{fmtBRL(falta)}</strong>
-            </div>
-          )}
-          <div className="projeto-projecao-divider" />
-
-          {temSaldo ? (
-            <div className="projeto-status projeto-status-ok">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-              Saldo suficiente para começar o projeto!
-            </div>
-          ) : mediaMensal && mediaMensal > 0 ? (
-            <>
-              <div className="projeto-projecao-row">
-                <span>Performance média / mês</span>
-                <strong style={{ color: mediaMensal >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                  {mediaMensal >= 0 ? '+' : ''}{fmtBRL(mediaMensal)}
-                </strong>
-              </div>
-              {mesesEstimado !== null && (
-                <div className="projeto-projecao-row">
-                  <span>Estimativa para juntar</span>
-                  <strong>{mesesEstimado} {mesesEstimado === 1 ? 'mês' : 'meses'}{dataEstimada ? ` (${dataEstimada})` : ''}</strong>
-                </div>
+      {/* Fluxo de caixa futuro */}
+      {totalProjeto > 0 && fluxo.length > 0 && (
+        <div className="projeto-fluxo">
+          <div className="projeto-fluxo-header">
+            <span className="projeto-fluxo-title">
+              Fluxo de caixa projetado
+              {temMesNegativo && (
+                <span className="projeto-fluxo-alerta"> — saldo negativo em algum mês</span>
               )}
-              {projeto.prazo && prazoStatus && (
-                <div className={`projeto-status projeto-status-${prazoStatus}`}>
-                  {prazoStatus === 'ok' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Vai dar no prazo!</>}
-                  {prazoStatus === 'risco' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>Apertado — possível, mas sem folga.</>}
-                  {prazoStatus === 'impossivel' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>Prazo curto com a performance atual.</>}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="projeto-sem-dados">Sem dados suficientes — registre ao menos 1 mês completo.</p>
+            </span>
+            <span className="projeto-fluxo-legend">
+              <span className="projeto-fluxo-leg-dot" style={{ background: 'var(--primary)' }} /> Parcelas/projeto
+            </span>
+          </div>
+
+          <div className="projeto-fluxo-wrap">
+            <table className="projeto-fluxo-table">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Saldo início</th>
+                  <th>Entradas</th>
+                  <th>Saídas</th>
+                  <th>Projeto</th>
+                  <th>Saldo fim</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fluxo.map((f) => {
+                  const isCurrent = f.mm === yyyymmStr(TODAY_YEAR, TODAY_MONTH)
+                  const isPrazo = projeto.prazo && f.mm === projeto.prazo.slice(0, 7)
+                  const temProjeto = f.parcelas > 0 || f.aVista > 0
+                  return (
+                    <tr key={f.mm} className={[
+                      isCurrent ? 'fluxo-row-current' : '',
+                      f.negativo ? 'fluxo-row-neg' : '',
+                    ].join(' ')}>
+                      <td className="fluxo-mm">
+                        {f.label}
+                        {isCurrent && <span className="fluxo-tag">hoje</span>}
+                        {isPrazo && <span className="fluxo-tag fluxo-tag-prazo">prazo</span>}
+                      </td>
+                      <td className="fluxo-num">{fmtBRL(f.saldoInicio)}</td>
+                      <td className="fluxo-num pos">{f.entradas > 0 ? `+${fmtBRL(f.entradas)}` : '—'}</td>
+                      <td className="fluxo-num">{f.saidas > 0 ? `−${fmtBRL(f.saidas)}` : '—'}</td>
+                      <td className="fluxo-num fluxo-projeto">
+                        {temProjeto ? `−${fmtBRL(f.parcelas + f.aVista)}` : '—'}
+                      </td>
+                      <td className={`fluxo-num fluxo-saldo-fim ${f.negativo ? 'neg' : 'pos'}`}>
+                        <strong>{fmtBRL(f.saldoFim)}</strong>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Status prazo */}
+          {projeto.prazo && prazoStatus && (
+            <div className={`projeto-status projeto-status-${prazoStatus}`} style={{ margin: '12px 16px 0' }}>
+              {prazoStatus === 'ok' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Saldo positivo até o prazo — vai dar!</>}
+              {prazoStatus === 'risco' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Apertado — saldo fica próximo de zero.</>}
+              {prazoStatus === 'impossivel' && <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Saldo fica negativo antes do prazo — precisa de mais entradas.</>}
+            </div>
           )}
+          <div style={{ height: 16 }} />
         </div>
       )}
     </div>
