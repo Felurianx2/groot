@@ -179,13 +179,15 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
           </select>
           {/* Início */}
           {temParcelamento && (item.frequencia ?? 'mensal') === 'semanal' ? (
-            <input
-              type="date"
-              className="projeto-parcela-data"
-              value={item.parcelaInicio ?? TODAY}
-              onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || TODAY })}
-              title="Data da 1ª semana"
-            />
+            <label className="projeto-parcela-data-wrap">
+              <span className="projeto-parcela-data-label">1ª semana</span>
+              <input
+                type="date"
+                className="projeto-parcela-data"
+                value={item.parcelaInicio?.length === 10 ? item.parcelaInicio : TODAY}
+                onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || TODAY })}
+              />
+            </label>
           ) : temParcelamento ? (() => {
             const [iy, im] = (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)).split('-').map(Number)
             const anos = Array.from({ length: 6 }, (_, i) => TODAY_YEAR + i)

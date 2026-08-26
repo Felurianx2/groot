@@ -866,3 +866,11 @@ a { color: var(--primary); text-decoration: none; }
   font-size: 13px; border: 1px solid var(--border); border-radius: 8px;
   padding: 5px 8px; background: var(--bg); color: var(--ink); width: 136px;
 }
+
+.projeto-parcela-data-wrap {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.projeto-parcela-data-label {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--ink-muted); padding-left: 2px;
+}
