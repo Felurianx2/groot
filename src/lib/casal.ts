@@ -105,13 +105,12 @@ export async function cancelInvite(inviteId: string): Promise<boolean> {
 
 /** Carrega orçamento do parceiro(a) via RLS */
 export async function loadPartnerBudget(partnerId: string): Promise<AppData | null> {
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from('budgets')
     .select('data')
     .eq('user_id', partnerId)
     .order('updated_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
-  if (error || !data) return null
-  return data.data as AppData
+  if (error || !rows?.length) return null
+  return rows[0].data as AppData
 }
