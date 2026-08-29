@@ -2,15 +2,24 @@ import { supabase } from './supabase'
 import type { AppData } from '../types'
 
 export async function loadFromSupabase(): Promise<AppData | null> {
-  // Usa limit(1) + maybeSingle para tolerar linhas duplicadas na tabela
+  // Garante que há sessão ativa antes de consultar
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Busca explicitamente pelo user_id do usuário logado
+  // Pega a primeira linha (resolve duplicatas com PGRST116)
   const { data, error } = await supabase
     .from('budgets')
     .select('data')
-    .order('updated_at', { ascending: false })
+    .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
 
-  if (error || !data) return null
+  if (error) {
+    console.error('[sync] loadFromSupabase error:', error)
+    return null
+  }
+  if (!data) return null
   return data.data as AppData
 }
 
