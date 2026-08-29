@@ -34,8 +34,10 @@ export default defineConfig({
       workbox: {
         skipWaiting: true,
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // JS excluído do precache — sempre buscado do Vercel direto (evita stale bundle)
+        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/groot.png'],
         runtimeCaching: [
           {
