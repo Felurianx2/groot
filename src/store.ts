@@ -200,6 +200,24 @@ export const useStore = create<AppStore>()(
           ),
         })),
     }),
-    { name: 'groot-v1' },
+    {
+      name: 'groot-v1',
+      // Normaliza dados ao reidratar do localStorage — garante arrays nunca undefined
+      merge: (persisted: unknown, current) => {
+        const p = persisted as Partial<typeof current>
+        return {
+          ...current,
+          ...p,
+          projetos: (p.projetos ?? []).map((proj) => ({
+            ...proj,
+            itens: proj.itens ?? [],
+          })),
+          fixos: p.fixos ?? [],
+          dias: p.dias ?? {},
+          economia: p.economia ?? {},
+          notasAno: p.notasAno ?? {},
+        }
+      },
+    },
   ),
 )

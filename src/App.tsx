@@ -82,12 +82,13 @@ function AppShell() {
 }
 
 export default function App() {
+  // Hooks SEMPRE antes de qualquer return condicional (React rules)
+  const { user, loading } = useAuth()
+
   // Rota pública /share/:token — sem necessidade de login
   if (shareMatch) {
     return <SharedView token={shareMatch[1]} />
   }
-
-  const { user, loading } = useAuth()
 
   if (loading) {
     return (
