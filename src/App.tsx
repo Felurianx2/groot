@@ -25,9 +25,11 @@ function AppShell() {
   const { user, signOut } = useAuth()
   const synced = useRef(false)
 
-  // Ao fazer login, carrega dados do Supabase (sobrescreve localStorage se tiver dado mais recente)
+  // Ao fazer login, carrega dados do Supabase
+  // Reset synced quando usuário faz logout, para recarregar no próximo login
   useEffect(() => {
-    if (!user || synced.current) return
+    if (!user) { synced.current = false; return }
+    if (synced.current) return
     synced.current = true
 
     loadFromSupabase().then((remote) => {
