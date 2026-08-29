@@ -61,49 +61,36 @@ function addMonths(y: number, m: number, n: number): [number, number] {
   return [y + Math.floor(total / 12), (total % 12) + 1]
 }
 
-// Custo total de projetos que "caem" num determinado mês (YYYY-MM)
+// Custo total de projetos que "caem" num determinado mês (YYYY-MM).
+// Lógica idêntica ao projetoChipsByDay do MonthView — itens sem parcelaInicio são ignorados.
 export function getProjetosCostForMonth(projetos: Projeto[], mm: string): number {
+  const [ty, tm] = mm.split('-').map(Number)
   let total = 0
   for (const projeto of projetos) {
-    const itens = projeto.itens ?? []
-
-    // Calcula o mapa mm->custo de itens com data definida
-    const mapComData = new Map<string, number>()
-    for (const item of itens) {
-      if (!item.parcelaInicio) continue
+    if (projeto.concluido) continue
+    for (const item of (projeto.itens ?? [])) {
+      if (!item.parcelaInicio || item.valor <= 0) continue
       const parcelas = item.parcelas ?? 1
       const valorParcela = item.valor / parcelas
       const freq = item.frequencia ?? 'mensal'
 
-      if (freq === 'semanal') {
+      if (freq === 'semanal' && item.parcelaInicio.length === 10) {
         const base = new Date(item.parcelaInicio + 'T12:00:00')
         for (let i = 0; i < parcelas; i++) {
           const d = new Date(base)
           d.setDate(d.getDate() + i * 7)
-          const key = yyyymmStr(d.getFullYear(), d.getMonth() + 1)
-          mapComData.set(key, (mapComData.get(key) ?? 0) + valorParcela)
+          if (d.getFullYear() === ty && d.getMonth() + 1 === tm) {
+            total += valorParcela
+          }
         }
-      } else {
-        const [iy, im] = item.parcelaInicio.split('-').map(Number)
-        for (let i = 0; i < parcelas; i++) {
-          const [y, m] = addMonths(iy, im, i)
-          const key = yyyymmStr(y, m)
-          mapComData.set(key, (mapComData.get(key) ?? 0) + valorParcela)
+      } else if (item.parcelaInicio.length >= 7) {
+        const [iy, im] = item.parcelaInicio.slice(0, 7).split('-').map(Number)
+        for (let p = 0; p < parcelas; p++) {
+          const [y, m] = addMonths(iy, im, p)
+          if (y === ty && m === tm) { total += valorParcela; break }
         }
       }
     }
-
-    // Itens sem data: caem no primeiro mês do projeto (menor chave do mapa)
-    const semData = itens.filter(i => !i.parcelaInicio)
-    if (semData.length > 0) {
-      const allKeys = [...mapComData.keys()].sort()
-      const primeiroMes = allKeys.length > 0 ? allKeys[0] : mm
-      if (primeiroMes === mm) {
-        for (const item of semData) total += item.valor
-      }
-    }
-
-    total += mapComData.get(mm) ?? 0
   }
   return total
 }
