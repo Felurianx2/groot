@@ -10,7 +10,7 @@ import { usePartnerStore } from '../partnerStore'
 import { useStore } from '../store'
 import {
   getStartSaldoForMonth, getMonthRows, getMonthSummary,
-  getSaldoStatus, getDiarioTotal, fmtBRL, MONTH_NAMES, yyyymmStr, dateStr, daysInMonth,
+  getSaldoStatus, fmtBRL, MONTH_NAMES, yyyymmStr,
 } from '../calculations'
 
 const TODAY = new Date().toISOString().slice(0, 10)
@@ -100,8 +100,8 @@ function DayTable({ data, year, month, label }: { data: AppData; year: number; m
 }
 
 // ─── Cards de resumo ──────────────────────────────────────────────────────────
-function SummaryCards({ totalEntradas, totalSaidas, totalDiario, saidaTotal, performance, saldoFinal, reservaMinima, compact }: {
-  totalEntradas: number; totalSaidas: number; totalDiario: number
+function SummaryCards({ totalEntradas, saidaTotal, performance, saldoFinal, reservaMinima, compact }: {
+  totalEntradas: number; totalSaidas?: number; totalDiario?: number
   saidaTotal: number; performance: number; saldoFinal: number | null
   reservaMinima: number; compact?: boolean
 }) {

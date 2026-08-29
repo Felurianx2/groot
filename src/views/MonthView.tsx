@@ -71,8 +71,6 @@ export default function MonthView() {
     [currentYear, currentMonth, startSaldo, dias, fixos],
   )
 
-  const summary = useMemo(() => getMonthSummary(rows, startSaldo), [rows, startSaldo])
-
   const isCurrentMonth = currentYear === TODAY_YEAR && currentMonth === TODAY_MONTH
 
   // Mapa day → parcelas de projeto que caem naquele dia do mês atual
