@@ -44,7 +44,7 @@ function AppShell() {
           fixos: remote.fixos ?? store.fixos,
           economia: remote.economia ?? store.economia,
           notasAno: remote.notasAno ?? store.notasAno,
-          projetos: remote.projetos ?? store.projetos ?? [],
+          projetos: (remote.projetos ?? store.projetos ?? []).map(p => ({ ...p, itens: p.itens ?? [] })),
         })
       }
       // Só libera o auto-save APÓS o load terminar (evita sobrescrever dados reais com defaults)
