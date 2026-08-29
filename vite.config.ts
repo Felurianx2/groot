@@ -36,10 +36,22 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        // JS excluído do precache — sempre buscado do Vercel direto (evita stale bundle)
-        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
+        // HTML e JS excluídos do precache — sempre buscados da rede (evita stale bundle)
+        globPatterns: ['**/*.{css,ico,png,svg,woff2}'],
         globIgnores: ['**/groot.png'],
+        navigateFallback: null,
         runtimeCaching: [
+          {
+            // HTML: network-first — garante sempre o index.html mais recente
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             // Google Fonts
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
