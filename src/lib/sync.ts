@@ -2,10 +2,13 @@ import { supabase } from './supabase'
 import type { AppData } from '../types'
 
 export async function loadFromSupabase(): Promise<AppData | null> {
+  // Usa limit(1) + maybeSingle para tolerar linhas duplicadas na tabela
   const { data, error } = await supabase
     .from('budgets')
     .select('data')
-    .single()
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (error || !data) return null
   return data.data as AppData

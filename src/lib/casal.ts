@@ -109,7 +109,9 @@ export async function loadPartnerBudget(partnerId: string): Promise<AppData | nu
     .from('budgets')
     .select('data')
     .eq('user_id', partnerId)
-    .single()
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
   if (error || !data) return null
   return data.data as AppData
 }
