@@ -168,7 +168,8 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
             onChange={(e) => {
               const n = Number(e.target.value)
               const freq = item.frequencia ?? 'mensal'
-              const inicio = n > 1 ? (item.parcelaInicio ?? (freq === 'semanal' ? TODAY : yyyymmStr(TODAY_YEAR, TODAY_MONTH))) : undefined
+              // Sempre garante parcelaInicio — à vista também precisa de mês definido
+              const inicio = item.parcelaInicio ?? (freq === 'semanal' ? TODAY : yyyymmStr(TODAY_YEAR, TODAY_MONTH))
               updateProjetoItem(projetoId, item.id, { parcelas: n, parcelaInicio: inicio })
             }}
             title="Número de parcelas"
@@ -211,7 +212,8 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
                 </select>
               </div>
             )
-          })() : temParcelamento ? (() => {
+          })() : (() => {
+            // Seletor mês/ano para parcelado mensal E à vista
             const [iy, im] = (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)).split('-').map(Number)
             const anos = Array.from({ length: 6 }, (_, i) => TODAY_YEAR + i)
             return (
@@ -228,7 +230,7 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
                 </select>
               </div>
             )
-          })() : null}
+          })()}
         </div>
         {temParcelamento && timeline.length > 0 && (
           <button
