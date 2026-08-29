@@ -29,13 +29,14 @@ export default function YearView() {
   const horizonteMeses = useStore((s) => s.horizonteMeses)
   const dias = useStore((s) => s.dias)
   const fixos = useStore((s) => s.fixos)
+  const projetos = useStore((s) => s.projetos)
   const economia = useStore((s) => s.economia)
   const notasAno = useStore((s) => s.notasAno)
   const year = currentYear
 
   const data = useMemo(
-    () => ({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno }),
-    [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno],
+    () => ({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos }),
+    [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos],
   )
 
   const monthData = useMemo(() => {

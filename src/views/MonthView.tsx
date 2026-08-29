@@ -57,8 +57,8 @@ export default function MonthView() {
   }
 
   const data = useMemo(
-    () => ({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno }),
-    [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno],
+    () => ({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos }),
+    [saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos],
   )
 
   const startSaldo = useMemo(() => {
