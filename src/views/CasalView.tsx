@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../lib/auth'
 import {
   upsertProfile, getCasalStatus, sendInvite,
@@ -280,11 +281,11 @@ function PartnerOnlyView({ data, email }: { data: AppData; email?: string }) {
 // ─── View principal ───────────────────────────────────────────────────────────
 export default function CasalView() {
   const { user } = useAuth()
-  const myData   = useStore(s => ({
+  const myData   = useStore(useShallow(s => ({
     saldoInicial: s.saldoInicial, reservaMinima: s.reservaMinima,
     horizonteMeses: s.horizonteMeses, dias: s.dias, fixos: s.fixos,
     economia: s.economia, notasAno: s.notasAno, projetos: s.projetos,
-  }))
+  })))
   const { setPartner, clearPartner, partnerBudget, partnerEmail } = usePartnerStore()
 
   const [status, setStatus]           = useState<CasalStatus | null>(null)
