@@ -178,17 +178,40 @@ function ItemRow({ item, projetoId }: { item: ProjetoItem; projetoId: string }) 
             ))}
           </select>
           {/* Início */}
-          {temParcelamento && (item.frequencia ?? 'mensal') === 'semanal' ? (
-            <label className="projeto-parcela-data-wrap">
-              <span className="projeto-parcela-data-label">1ª semana</span>
-              <input
-                type="date"
-                className="projeto-parcela-data"
-                value={item.parcelaInicio?.length === 10 ? item.parcelaInicio : TODAY}
-                onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: e.target.value || TODAY })}
-              />
-            </label>
-          ) : temParcelamento ? (() => {
+          {temParcelamento && (item.frequencia ?? 'mensal') === 'semanal' ? (() => {
+            const current = item.parcelaInicio?.length === 10 ? item.parcelaInicio : TODAY
+            const [cy, cm, cd] = current.split('-').map(Number)
+            const anos = Array.from({ length: 4 }, (_, i) => TODAY_YEAR + i)
+            const maxDia = new Date(cy, cm, 0).getDate()
+            const diasOpts = Array.from({ length: maxDia }, (_, i) => i + 1)
+            function buildDate(y: number, m: number, d: number) {
+              const max = new Date(y, m, 0).getDate()
+              const dd = Math.min(d, max)
+              return `${y}-${String(m).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
+            }
+            return (
+              <div className="projeto-parcela-data-wrap">
+                <span className="projeto-parcela-data-label">1ª sem</span>
+                <select className="projeto-parcela-dia-sel"
+                  value={cd}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: buildDate(cy, cm, Number(e.target.value)) })}>
+                  {diasOpts.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select className="projeto-parcela-mes-sel"
+                  value={cm}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: buildDate(cy, Number(e.target.value), cd) })}>
+                  {MONTH_NAMES.map((name, idx) => (
+                    <option key={idx + 1} value={idx + 1}>{name.slice(0, 3)}</option>
+                  ))}
+                </select>
+                <select className="projeto-parcela-ano-sel"
+                  value={cy}
+                  onChange={(e) => updateProjetoItem(projetoId, item.id, { parcelaInicio: buildDate(Number(e.target.value), cm, cd) })}>
+                  {anos.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            )
+          })() : temParcelamento ? (() => {
             const [iy, im] = (item.parcelaInicio ?? yyyymmStr(TODAY_YEAR, TODAY_MONTH)).split('-').map(Number)
             const anos = Array.from({ length: 6 }, (_, i) => TODAY_YEAR + i)
             return (

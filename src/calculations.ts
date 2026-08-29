@@ -7,6 +7,18 @@ export function getDiarioTotal(entry: DayEntry | undefined): number {
   return entry.diario ?? 0
 }
 
+export function getSaidaTotal(entry: DayEntry | undefined): number {
+  if (!entry) return 0
+  if (entry.saidaItens && entry.saidaItens.length > 0)
+    return entry.saidaItens.reduce((s, i) => s + i.valor, 0)
+  return entry.saida ?? 0
+}
+
+export function hasSaidaManual(entry: DayEntry | undefined): boolean {
+  if (!entry) return false
+  return (entry.saidaItens?.length ?? 0) > 0 || entry.saida !== undefined
+}
+
 export interface DaySaldoRow {
   day: number
   date: string
@@ -97,8 +109,9 @@ export function getMonthRows(
     if (entry?.saida !== undefined) {
       saida = entry.saida
     } else if (isFuture) {
-      saida = getProjectedForDay(year, month, d, fixos, 'saida')
-      saidaIsProjected = saida > 0
+      const fixoSaida = getProjectedForDay(year, month, d, fixos, 'saida')
+      saida = fixoSaida
+      saidaIsProjected = fixoSaida > 0
     }
 
     const diario = getDiarioTotal(entry)

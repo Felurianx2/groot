@@ -14,6 +14,9 @@ interface AppStore extends AppData {
   addDiarioItem(date: string, item: Omit<DiarioItem, 'id'>): void
   updateDiarioItem(date: string, id: string, partial: Partial<Omit<DiarioItem, 'id'>>): void
   removeDiarioItem(date: string, id: string): void
+  addSaidaItem(date: string, item: Omit<DiarioItem, 'id'>): void
+  updateSaidaItem(date: string, id: string, partial: Partial<Omit<DiarioItem, 'id'>>): void
+  removeSaidaItem(date: string, id: string): void
   addFixo(fixo: Omit<Fixo, 'id'>): void
   updateFixo(id: string, partial: Partial<Omit<Fixo, 'id'>>): void
   removeFixo(id: string): void
@@ -100,6 +103,42 @@ export const useStore = create<AppStore>()(
           const existing = state.dias[date] ?? {}
           const next = (existing.diarioItens ?? []).filter((i) => i.id !== id)
           return { dias: { ...state.dias, [date]: { ...existing, diarioItens: next } } }
+        }),
+
+      addSaidaItem: (date, item) =>
+        set((state) => {
+          const existing = state.dias[date] ?? {}
+          const prev = existing.saidaItens ?? []
+          // migra saida legacy para saidaItens se necessário
+          const migrated = existing.saida !== undefined && prev.length === 0
+            ? [{ id: crypto.randomUUID(), valor: existing.saida, nota: existing.saidaNota ?? '' }]
+            : prev
+          const { saida: _s, saidaNota: _sn, ...rest } = existing as Record<string, unknown>
+          return {
+            dias: {
+              ...state.dias,
+              [date]: { ...rest, saidaItens: [...migrated, { ...item, id: crypto.randomUUID() }] },
+            },
+          }
+        }),
+
+      updateSaidaItem: (date, id, partial) =>
+        set((state) => {
+          const existing = state.dias[date] ?? {}
+          const prev = existing.saidaItens ?? []
+          return {
+            dias: {
+              ...state.dias,
+              [date]: { ...existing, saidaItens: prev.map((i) => (i.id === id ? { ...i, ...partial } : i)) },
+            },
+          }
+        }),
+
+      removeSaidaItem: (date, id) =>
+        set((state) => {
+          const existing = state.dias[date] ?? {}
+          const next = (existing.saidaItens ?? []).filter((i) => i.id !== id)
+          return { dias: { ...state.dias, [date]: { ...existing, saidaItens: next } } }
         }),
 
       addFixo: (fixo) =>

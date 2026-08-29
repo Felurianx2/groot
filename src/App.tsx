@@ -9,7 +9,15 @@ import FixosView from './views/FixosView'
 import EconomiaView from './views/EconomiaView'
 import ProjetosView from './views/ProjetosView'
 import ConfigView from './views/ConfigView'
+import CasalView from './views/CasalView'
 import LoginView from './views/LoginView'
+import SharedView from './views/SharedView'
+
+// Detecta rota /share/{token}
+const shareMatch = window.location.pathname.match(/^\/share\/([0-9a-f-]{36})$/)
+if (shareMatch) {
+  // Renderizado separado fora do App normal
+}
 
 function AppShell() {
   const activeView = useStore((s) => s.activeView)
@@ -57,6 +65,7 @@ function AppShell() {
         {activeView === 'fixos' && <FixosView />}
         {activeView === 'economia' && <EconomiaView />}
         {activeView === 'projetos' && <ProjetosView />}
+        {activeView === 'casal' && <CasalView />}
         {activeView === 'config' && <ConfigView />}
       </main>
     </>
@@ -64,6 +73,11 @@ function AppShell() {
 }
 
 export default function App() {
+  // Rota pública /share/:token — sem necessidade de login
+  if (shareMatch) {
+    return <SharedView token={shareMatch[1]} />
+  }
+
   const { user, loading } = useAuth()
 
   if (loading) {

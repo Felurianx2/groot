@@ -5,12 +5,13 @@ import type { DiarioItem } from '../types'
 interface Props {
   itens: DiarioItem[]
   total: number
+  projected?: number  // valor projetado (fixo futuro) — mostrado em itálico quando não há itens
   onAdd: (item: { valor: number; nota: string }) => void
   onUpdate: (id: string, partial: { valor?: number; nota?: string }) => void
   onRemove: (id: string) => void
 }
 
-export default function DiarioCell({ itens, total, onAdd, onUpdate, onRemove }: Props) {
+export default function DiarioCell({ itens, total, projected, onAdd, onUpdate, onRemove }: Props) {
   const [open, setOpen] = useState(false)
   const [newValor, setNewValor] = useState('')
   const [newNota, setNewNota] = useState('')
@@ -31,6 +32,14 @@ export default function DiarioCell({ itens, total, onAdd, onUpdate, onRemove }: 
 
   if (!open) {
     const hasItens = itens.length > 0
+    // Valor projetado (sem itens manuais): mostra em itálico
+    if (!hasItens && projected !== undefined && projected > 0) {
+      return (
+        <button type="button" className="cell-display projected" onClick={() => setOpen(true)} title="Valor projetado — clique para registrar">
+          <em>{fmtBRL(projected)}</em>
+        </button>
+      )
+    }
     return (
       <button
         type="button"

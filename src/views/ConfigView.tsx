@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { fmtBRL } from '../calculations'
+import { generateShareToken, revokeShareToken, loadShareToken } from '../lib/share'
+
+const SHARE_BASE = window.location.origin + '/share/'
+const API_BASE   = window.location.origin + '/api/share/'
 
 export default function ConfigView() {
   const { saldoInicial, reservaMinima, horizonteMeses, updateConfig } = useStore()
@@ -11,6 +15,35 @@ export default function ConfigView() {
     horizonteMeses: String(horizonteMeses),
   })
   const [saved, setSaved] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [copied, setCopied] = useState<'visual' | 'api' | null>(null)
+
+  useEffect(() => {
+    loadShareToken().then(setShareToken)
+  }, [])
+
+  async function handleGenerate() {
+    setShareLoading(true)
+    const token = await generateShareToken()
+    setShareToken(token)
+    setShareLoading(false)
+  }
+
+  async function handleRevoke() {
+    if (!confirm('Revogar o link? Qualquer um com o link anterior perderá acesso.')) return
+    setShareLoading(true)
+    await revokeShareToken()
+    setShareToken(null)
+    setShareLoading(false)
+  }
+
+  function handleCopy() {
+    if (!shareToken) return
+    navigator.clipboard.writeText(SHARE_BASE + shareToken)
+    setCopied('visual')
+    setTimeout(() => setCopied(null), 2000)
+  }
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -122,6 +155,64 @@ export default function ConfigView() {
           ))}
         </div>
       </div>
+      {/* Link compartilhável */}
+      <div className="config-section" style={{ marginTop: 24 }}>
+        <h2>Link de compartilhamento</h2>
+        <p className="config-desc">
+          Gere um link público (somente leitura) dos seus dados financeiros.
+          Útil para compartilhar com o Claude ou com alguém de confiança para análise.
+          O link não exige login para visualizar.
+        </p>
+        {shareToken ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Link visual */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--ink-muted)', marginBottom: 5 }}>
+                🖥 Link visual (navegador)
+              </div>
+              <div className="share-link-box">
+                <span className="share-link-text">{SHARE_BASE + shareToken}</span>
+                <button className="btn btn-secondary share-link-btn" onClick={handleCopy}>
+                  {copied === 'visual' ? '✓' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+            {/* Link API para Claude */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--ink-muted)', marginBottom: 5 }}>
+                🤖 Link para Claude / API (JSON)
+              </div>
+              <div className="share-link-box">
+                <span className="share-link-text">{API_BASE + shareToken}</span>
+                <button className="btn btn-secondary share-link-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(API_BASE + shareToken)
+                    setCopied('api')
+                    setTimeout(() => setCopied(null), 2000)
+                  }}>
+                  {copied === 'api' ? '✓' : 'Copiar'}
+                </button>
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+                Cole esse link no Claude para análise direta das suas finanças.
+              </p>
+            </div>
+            <div>
+              <button className="btn btn-danger" onClick={handleRevoke} disabled={shareLoading}>
+                Revogar links
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0 }}>
+              ⚠ Qualquer pessoa com esses links pode ver seus dados. Revogue quando não precisar mais.
+            </p>
+          </div>
+        ) : (
+          <button className="btn btn-primary" onClick={handleGenerate} disabled={shareLoading}>
+            {shareLoading ? 'Gerando…' : '🔗 Gerar link de compartilhamento'}
+          </button>
+        )}
+      </div>
+
       <div className="config-section" style={{ marginTop: 16 }}>
         <h2>Suporte</h2>
         <p className="config-desc">

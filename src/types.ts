@@ -7,9 +7,10 @@ export interface DiarioItem {
 export interface DayEntry {
   entrada?: number
   entradaNota?: string
-  saida?: number
+  saida?: number          // backward compat; ignorado quando saidaItens presente
   saidaNota?: string
-  diario?: number // backward compat; ignored when diarioItens present
+  saidaItens?: DiarioItem[]
+  diario?: number         // backward compat; ignorado quando diarioItens presente
   diarioItens?: DiarioItem[]
 }
 
@@ -49,8 +50,9 @@ export interface Projeto {
   prazo: string | null // "YYYY-MM-DD" or null
   itens: ProjetoItem[]
   concluido: boolean
+  compartilhado?: boolean   // visível para o(a) parceiro(a) na aba Casal/Projetos
 }
 
 export type SaldoStatus = 'green' | 'yellow' | 'red'
 
-export type ActiveView = 'month' | 'year' | 'fixos' | 'economia' | 'projetos' | 'config'
+export type ActiveView = 'month' | 'year' | 'fixos' | 'economia' | 'projetos' | 'casal' | 'config'
