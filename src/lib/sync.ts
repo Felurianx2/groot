@@ -11,14 +11,14 @@ export async function loadFromSupabase(): Promise<AppData | null> {
   }
   const userId = session.user.id
 
-  const { data, error, count } = await supabase
+  const { data, error } = await supabase
     .from('budgets')
-    .select('data', { count: 'exact' })
+    .select('data')
     .eq('user_id', userId)
     .limit(1)
     .maybeSingle()
 
-  console.log('[sync] query result — data:', data ? '(presente)' : null, '| count:', count, '| error:', error?.message ?? null, error?.code ?? '')
+  console.log('[sync] query result — data:', data ? '(presente)' : null, '| error:', error?.message ?? null, error?.code ?? '')
   if (error) {
     console.error('[sync] loadFromSupabase error:', error.message, error.code)
     return null
