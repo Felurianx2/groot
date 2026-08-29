@@ -1073,3 +1073,17 @@ a { color: var(--primary); text-decoration: none; }
 .btn-danger:hover {
   background: color-mix(in oklch, var(--red) 20%, transparent);
 }
+
+/* ─── Botão compartilhar projeto ─────────────────────────────────────────── */
+.btn-compartilhar {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border); background: none; cursor: pointer;
+  color: var(--ink-faint); transition: all 150ms; white-space: nowrap;
+}
+.btn-compartilhar:hover { color: var(--primary); border-color: var(--primary); }
+.btn-compartilhar.active {
+  background: color-mix(in oklch, var(--primary) 10%, transparent);
+  color: var(--primary);
+  border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+}

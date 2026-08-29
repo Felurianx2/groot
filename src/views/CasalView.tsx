@@ -353,22 +353,20 @@ export default function CasalView() {
         <h1 style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-0.03em' }}>Casal</h1>
         {status?.type === 'connected' && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {partnerBudget && (
-              <>
-                <button
-                  className={`btn-projeto-toggle${viewMode === 'partner' ? ' active' : ''}`}
-                  onClick={() => setViewMode('partner')}
-                >
-                  {partnerEmail?.split('@')[0] ?? 'Parceiro(a)'}
-                </button>
-                <button
-                  className={`btn-projeto-toggle${viewMode === 'combined' ? ' active' : ''}`}
-                  onClick={() => setViewMode('combined')}
-                >
-                  Combinado
-                </button>
-              </>
-            )}
+            <button
+              className={`btn-projeto-toggle${viewMode === 'partner' ? ' active' : ''}`}
+              onClick={() => setViewMode('partner')}
+            >
+              {partnerEmail?.split('@')[0] ?? 'Parceiro(a)'}
+            </button>
+            <button
+              className={`btn-projeto-toggle${viewMode === 'combined' ? ' active' : ''}`}
+              onClick={() => setViewMode('combined')}
+              disabled={!partnerBudget}
+              title={!partnerBudget ? 'Parceiro(a) sem dados ainda' : 'Ver orçamentos combinados'}
+            >
+              Combinado
+            </button>
             <button className="btn btn-danger" style={{ fontSize: 12, padding: '4px 12px' }} onClick={handleDisconnect}>
               Desconectar
             </button>
