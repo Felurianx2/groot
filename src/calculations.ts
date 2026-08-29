@@ -1,4 +1,4 @@
-import type { AppData, DayEntry, Fixo, SaldoStatus } from './types'
+import type { AppData, DayEntry, Fixo, Projeto, SaldoStatus } from './types'
 
 export function getDiarioTotal(entry: DayEntry | undefined): number {
   if (!entry) return 0
@@ -54,6 +54,58 @@ export function yyyymmStr(year: number, month: number): string {
 
 function prevMonth(year: number, month: number): [number, number] {
   return month === 1 ? [year - 1, 12] : [year, month - 1]
+}
+
+function addMonths(y: number, m: number, n: number): [number, number] {
+  const total = (m - 1) + n
+  return [y + Math.floor(total / 12), (total % 12) + 1]
+}
+
+// Custo total de projetos que "caem" num determinado mês (YYYY-MM)
+export function getProjetosCostForMonth(projetos: Projeto[], mm: string): number {
+  let total = 0
+  for (const projeto of projetos) {
+    const itens = projeto.itens ?? []
+
+    // Calcula o mapa mm->custo de itens com data definida
+    const mapComData = new Map<string, number>()
+    for (const item of itens) {
+      if (!item.parcelaInicio) continue
+      const parcelas = item.parcelas ?? 1
+      const valorParcela = item.valor / parcelas
+      const freq = item.frequencia ?? 'mensal'
+
+      if (freq === 'semanal') {
+        const base = new Date(item.parcelaInicio + 'T12:00:00')
+        for (let i = 0; i < parcelas; i++) {
+          const d = new Date(base)
+          d.setDate(d.getDate() + i * 7)
+          const key = yyyymmStr(d.getFullYear(), d.getMonth() + 1)
+          mapComData.set(key, (mapComData.get(key) ?? 0) + valorParcela)
+        }
+      } else {
+        const [iy, im] = item.parcelaInicio.split('-').map(Number)
+        for (let i = 0; i < parcelas; i++) {
+          const [y, m] = addMonths(iy, im, i)
+          const key = yyyymmStr(y, m)
+          mapComData.set(key, (mapComData.get(key) ?? 0) + valorParcela)
+        }
+      }
+    }
+
+    // Itens sem data: caem no primeiro mês do projeto (menor chave do mapa)
+    const semData = itens.filter(i => !i.parcelaInicio)
+    if (semData.length > 0) {
+      const allKeys = [...mapComData.keys()].sort()
+      const primeiroMes = allKeys.length > 0 ? allKeys[0] : mm
+      if (primeiroMes === mm) {
+        for (const item of semData) total += item.valor
+      }
+    }
+
+    total += mapComData.get(mm) ?? 0
+  }
+  return total
 }
 
 function effectiveFixoDay(fixoDia: number, year: number, month: number): number {
@@ -151,7 +203,10 @@ export function getStartSaldoForMonth(
   const [py, pm] = prevMonth(year, month)
   const prevStart = getStartSaldoForMonth(py, pm, data, todayStr, cache)
   const rows = getMonthRows(py, pm, prevStart, data.dias, data.fixos ?? [], todayStr)
-  const endSaldo = rows.length > 0 ? rows[rows.length - 1].saldo : prevStart
+  const baseEnd = rows.length > 0 ? rows[rows.length - 1].saldo : prevStart
+  // Desconta custos de projetos do mês anterior no saldo corrido
+  const projetosCost = getProjetosCostForMonth(data.projetos ?? [], yyyymmStr(py, pm))
+  const endSaldo = baseEnd - projetosCost
 
   cache.set(key, endSaldo)
   return endSaldo
