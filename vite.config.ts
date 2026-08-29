@@ -48,17 +48,8 @@ export default defineConfig({
               cacheableResponse: { statuses: [0, 200] },
             },
           },
-          {
-            // Supabase auth e dados — network first, fallback em cache
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
+          // Supabase NUNCA deve ser cacheado pelo SW — sempre direto à rede
+          // (remover o bloco do supabase-api elimina qualquer resposta cacheada antiga)
         ],
       },
     }),
