@@ -24,32 +24,39 @@ function AppShell() {
   const store = useStore()
   const { user, signOut } = useAuth()
   const synced = useRef(false)
+  // Bloqueia o auto-save até o load remoto terminar
+  const loadedRef = useRef(false)
 
   // Ao fazer login, carrega dados do Supabase
   // Reset synced quando usuário faz logout, para recarregar no próximo login
   useEffect(() => {
-    if (!user) { synced.current = false; return }
+    if (!user) { synced.current = false; loadedRef.current = false; return }
     if (synced.current) return
     synced.current = true
 
     loadFromSupabase().then((remote) => {
-      if (!remote) return
-      useStore.setState({
-        saldoInicial: remote.saldoInicial ?? store.saldoInicial,
-        reservaMinima: remote.reservaMinima ?? store.reservaMinima,
-        horizonteMeses: remote.horizonteMeses ?? store.horizonteMeses,
-        dias: remote.dias ?? store.dias,
-        fixos: remote.fixos ?? store.fixos,
-        economia: remote.economia ?? store.economia,
-        notasAno: remote.notasAno ?? store.notasAno,
-        projetos: remote.projetos ?? store.projetos ?? [],
-      })
+      if (remote) {
+        useStore.setState({
+          saldoInicial: remote.saldoInicial ?? store.saldoInicial,
+          reservaMinima: remote.reservaMinima ?? store.reservaMinima,
+          horizonteMeses: remote.horizonteMeses ?? store.horizonteMeses,
+          dias: remote.dias ?? store.dias,
+          fixos: remote.fixos ?? store.fixos,
+          economia: remote.economia ?? store.economia,
+          notasAno: remote.notasAno ?? store.notasAno,
+          projetos: remote.projetos ?? store.projetos ?? [],
+        })
+      }
+      // Só libera o auto-save APÓS o load terminar (evita sobrescrever dados reais com defaults)
+      loadedRef.current = true
     })
   }, [user])
 
   // Sync automático a cada mudança (debounced 1.5s)
+  // Só salva após o load remoto ter terminado
   useEffect(() => {
     if (!user) return
+    if (!loadedRef.current) return
     const { saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos } = store
     debouncedSave({ saldoInicial, reservaMinima, horizonteMeses, dias, fixos, economia, notasAno, projetos })
   }, [
