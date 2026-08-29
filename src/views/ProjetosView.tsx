@@ -304,10 +304,10 @@ function useFluxoProjeto(projeto: Projeto, saldoAtualHoje: number): FluxoMes[] {
     // Parcelas do projeto por mês
     const parcelasMapa = calcTimeline(projeto)
 
-    // Itens à vista: custo total no primeiro mês que o projeto começa
-    // (se não há parcelas definidas, considera tudo no mês atual)
+    // Itens à vista: apenas itens sem data definida (parcelaInicio ausente).
+    // Itens com parcelaInicio — mesmo à vista (parcelas=1) — já entram no mapa via calcTimeline.
     const totalAvista = projeto.itens
-      .filter((i) => (i.parcelas ?? 1) === 1 || !i.parcelaInicio)
+      .filter((i) => !i.parcelaInicio)
       .reduce((s, i) => s + i.valor, 0)
 
     // Determina o primeiro mês relevante do projeto
