@@ -11,14 +11,16 @@ export async function loadFromSupabase(): Promise<AppData | null> {
   }
   const userId = session.user.id
 
-  const { data, error } = await supabase
+  // Usa array (sem maybeSingle) para evitar 406 quando há múltiplas linhas
+  const { data: rows, error } = await supabase
     .from('budgets')
     .select('data')
     .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
 
-  console.log('[sync] query result — data:', data ? '(presente)' : null, '| error:', error?.message ?? null, error?.code ?? '')
+  const data = rows?.[0] ?? null
+  console.log('[sync] query result — rows:', rows?.length ?? 0, '| error:', error?.message ?? null, error?.code ?? '')
   if (error) {
     console.error('[sync] loadFromSupabase error:', error.message, error.code)
     return null
