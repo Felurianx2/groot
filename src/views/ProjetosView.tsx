@@ -55,7 +55,7 @@ function gerarParcelas(item: ProjetoItem): { mm: string; valor: number; label: s
 // Mapa de mm -> total de parcelas do projeto
 function calcTimeline(projeto: Projeto): Map<string, number> {
   const map = new Map<string, number>()
-  for (const item of projeto.itens) {
+  for (const item of (projeto.itens ?? [])) {
     for (const p of gerarParcelas(item)) {
       map.set(p.mm, (map.get(p.mm) ?? 0) + p.valor)
     }
@@ -393,7 +393,7 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal: _mediaMensal }: Projeto
   const [editandoNome, setEditandoNome] = useState(false)
   const [nomeTemp, setNomeTemp] = useState(projeto.nome)
 
-  const totalProjeto = projeto.itens.reduce((s, i) => s + i.valor, 0)
+  const totalProjeto = (projeto.itens ?? []).reduce((s, i) => s + i.valor, 0)
   const fluxo = useFluxoProjeto(projeto, saldoAtual)
   const temMesNegativo = fluxo.some((f) => f.negativo)
 
@@ -478,10 +478,10 @@ function ProjetoCard({ projeto, saldoAtual, mediaMensal: _mediaMensal }: Projeto
         <div className="projeto-itens-header">
           <span>Despesa</span><span>Valor total</span><span>Parcelamento</span>
         </div>
-        {projeto.itens.length === 0 && (
+        {(projeto.itens ?? []).length === 0 && (
           <p className="projeto-empty">Adicione as despesas do projeto abaixo.</p>
         )}
-        {projeto.itens.map((item) => (
+        {(projeto.itens ?? []).map((item) => (
           <ItemRow key={item.id} item={item} projetoId={projeto.id} />
         ))}
 

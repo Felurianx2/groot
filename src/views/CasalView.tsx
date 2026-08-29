@@ -35,8 +35,9 @@ function entryDescs(entry: DayEntry | undefined) {
 function useMonthData(data: AppData, year: number, month: number) {
   return useMemo(() => {
     const cache = new Map<string, number>()
-    const start = getStartSaldoForMonth(year, month, data, TODAY, cache)
-    const rows  = getMonthRows(year, month, start, data.dias, data.fixos, TODAY)
+    const normalizedData = { ...data, fixos: data.fixos ?? [], dias: data.dias ?? {}, projetos: data.projetos ?? [] }
+    const start = getStartSaldoForMonth(year, month, normalizedData, TODAY, cache)
+    const rows  = getMonthRows(year, month, start, normalizedData.dias, normalizedData.fixos, TODAY)
     const sum   = getMonthSummary(rows, start)
     return { rows, summary: sum, startSaldo: start }
   }, [data, year, month])
@@ -207,7 +208,7 @@ function PartnerOnlyView({ data, email }: { data: AppData; email?: string }) {
   const [month, setMonth] = useState(NOW.getMonth() + 1)
   const { summary }       = useMonthData(data, year, month)
   const mm = yyyymmStr(year, month)
-  const fixosAtivos = data.fixos.filter(f => f.inicio <= mm && (f.fim === null || f.fim >= mm))
+  const fixosAtivos = (data.fixos ?? []).filter(f => f.inicio <= mm && (f.fim === null || f.fim >= mm))
 
   return (
     <div className="casal-partner-budget">

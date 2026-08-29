@@ -79,7 +79,7 @@ export default function MonthView() {
     if (!showProjetos || !projetos?.length) return map
     for (const projeto of projetos) {
       if (projeto.concluido) continue
-      for (const item of projeto.itens) {
+      for (const item of (projeto.itens ?? [])) {
         if (!item.parcelaInicio || item.valor <= 0) continue
         const parcelas = item.parcelas ?? 1
         const freq = item.frequencia ?? 'mensal'

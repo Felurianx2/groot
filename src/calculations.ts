@@ -126,7 +126,7 @@ export function getMonthRows(
 function getOriginMonth(data: AppData): string {
   const months: string[] = [
     ...Object.keys(data.dias).map((d) => d.slice(0, 7)),
-    ...data.fixos.map((f) => f.inicio),
+    ...(data.fixos ?? []).map((f) => f.inicio),
   ].filter(Boolean)
   if (months.length === 0) return '9999-12'
   return months.sort()[0]
@@ -150,7 +150,7 @@ export function getStartSaldoForMonth(
 
   const [py, pm] = prevMonth(year, month)
   const prevStart = getStartSaldoForMonth(py, pm, data, todayStr, cache)
-  const rows = getMonthRows(py, pm, prevStart, data.dias, data.fixos, todayStr)
+  const rows = getMonthRows(py, pm, prevStart, data.dias, data.fixos ?? [], todayStr)
   const endSaldo = rows.length > 0 ? rows[rows.length - 1].saldo : prevStart
 
   cache.set(key, endSaldo)
